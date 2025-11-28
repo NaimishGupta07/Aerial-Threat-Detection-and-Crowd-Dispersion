@@ -49,7 +49,7 @@ export function ImageAnalyzer() {
   };
 
   return (
-    <div className="glass-panel p-6 rounded-lg h-full flex flex-col relative overflow-hidden">
+    <div className="glass-panel p-6 rounded-lg h-full flex flex-col relative">
       <div className="flex items-center justify-between mb-6">
         <div className="space-y-1">
           <h3 className="font-display font-bold text-lg flex items-center gap-2">
@@ -70,7 +70,7 @@ export function ImageAnalyzer() {
         )}
       </div>
 
-      <div className="flex-1 flex flex-col min-h-[300px]">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg bg-black border border-border relative group">
         {!image ? (
           <div 
             onClick={() => fileInputRef.current?.click()}
@@ -90,7 +90,7 @@ export function ImageAnalyzer() {
             />
           </div>
         ) : (
-          <div className="relative flex-1 rounded-lg overflow-hidden bg-black border border-border group">
+          <div className="relative w-full h-full">
             <img src={image} alt="Analysis Target" className="w-full h-full object-contain opacity-80" />
             
             {/* Scanning Effect Overlay */}
@@ -139,7 +139,7 @@ export function ImageAnalyzer() {
       </div>
 
       {/* Action Bar */}
-      <div className="mt-4 flex items-center justify-between gap-4">
+      <div className="mt-4 flex items-center justify-between gap-4 min-h-[80px]">
         {image && !result && !isAnalyzing && (
           <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-display font-bold tracking-wide" onClick={analyzeImage}>
             <Scan className="w-4 h-4 mr-2" />
@@ -148,7 +148,7 @@ export function ImageAnalyzer() {
         )}
         
         {result && (
-          <div className="w-full grid grid-cols-3 gap-2">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
              <Card className="bg-card/50 border-border p-3 flex flex-col items-center justify-center text-center">
                <ShieldAlert className="w-5 h-5 text-destructive mb-1" />
                <span className="text-[10px] font-mono text-muted-foreground">THREATS</span>
