@@ -2,9 +2,11 @@ import { LiveFeed } from "@/components/live-feed";
 import { ThreatMap } from "@/components/threat-map";
 import { StatsPanel } from "@/components/stats-panel";
 import { AlertFeed } from "@/components/alert-feed";
+import { ImageAnalyzer } from "@/components/image-analyzer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Siren, Play, Pause, Download, Share2 } from "lucide-react";
+import { Siren, Play, Pause, Download, Share2, LayoutGrid, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Dashboard() {
   return (
@@ -37,28 +39,59 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top Row: Visuals */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-[800px] lg:h-[500px]">
-        {/* Live Feed (Larger) */}
-        <div className="lg:col-span-7 h-full relative group">
-          <div className="absolute -top-3 left-4 z-10">
-            <Badge variant="outline" className="bg-background text-primary border-primary font-mono text-[10px]">
-              OPTICAL SENSOR ARRAY
-            </Badge>
-          </div>
-          <LiveFeed />
+      <Tabs defaultValue="live" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <TabsList className="bg-card border border-border">
+            <TabsTrigger value="live" className="gap-2 font-mono text-xs data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+              <Eye className="w-3 h-3" /> LIVE OPS
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="gap-2 font-mono text-xs data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+              <LayoutGrid className="w-3 h-3" /> MANUAL ANALYSIS
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        {/* Map (Smaller) */}
-        <div className="lg:col-span-5 h-full relative">
-          <div className="absolute -top-3 left-4 z-10">
-            <Badge variant="outline" className="bg-background text-secondary-foreground border-border font-mono text-[10px]">
-              GEOSPATIAL TRACKING
-            </Badge>
+        <TabsContent value="live" className="space-y-4">
+          {/* Top Row: Visuals */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-[800px] lg:h-[500px]">
+            {/* Live Feed (Larger) */}
+            <div className="lg:col-span-7 h-full relative group">
+              <div className="absolute -top-3 left-4 z-10">
+                <Badge variant="outline" className="bg-background text-primary border-primary font-mono text-[10px]">
+                  OPTICAL SENSOR ARRAY
+                </Badge>
+              </div>
+              <LiveFeed />
+            </div>
+
+            {/* Map (Smaller) */}
+            <div className="lg:col-span-5 h-full relative">
+              <div className="absolute -top-3 left-4 z-10">
+                <Badge variant="outline" className="bg-background text-secondary-foreground border-border font-mono text-[10px]">
+                  GEOSPATIAL TRACKING
+                </Badge>
+              </div>
+              <ThreatMap />
+            </div>
           </div>
-          <ThreatMap />
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="manual" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-[600px]">
+             <div className="lg:col-span-8 h-full">
+               <ImageAnalyzer />
+             </div>
+             <div className="lg:col-span-4 h-full relative">
+               <div className="absolute -top-3 left-4 z-10">
+                 <Badge variant="outline" className="bg-background text-secondary-foreground border-border font-mono text-[10px]">
+                   LOCATION CONTEXT
+                 </Badge>
+               </div>
+               <ThreatMap />
+             </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Bottom Row: Data */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-auto lg:h-[350px]">
