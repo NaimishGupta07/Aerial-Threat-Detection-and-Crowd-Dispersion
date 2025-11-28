@@ -1,6 +1,11 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 
-const crowdData = [
+interface StatsPanelProps {
+  crowdData?: { time: string; density: number; panic: number }[];
+  threatData?: { name: string; count: number; risk: number }[];
+}
+
+const DEFAULT_CROWD_DATA = [
   { time: '10:00', density: 20, panic: 5 },
   { time: '10:05', density: 25, panic: 8 },
   { time: '10:10', density: 40, panic: 12 },
@@ -10,14 +15,14 @@ const crowdData = [
   { time: '10:30', density: 60, panic: 40 },
 ];
 
-const threatData = [
+const DEFAULT_THREAT_DATA = [
   { name: 'UAV', count: 12, risk: 85 },
   { name: 'Drone', count: 8, risk: 65 },
   { name: 'Bird', count: 24, risk: 5 },
   { name: 'Plane', count: 3, risk: 10 },
 ];
 
-export function StatsPanel() {
+export function StatsPanel({ crowdData = DEFAULT_CROWD_DATA, threatData = DEFAULT_THREAT_DATA }: StatsPanelProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
       {/* Crowd Density Chart */}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LiveFeed } from "@/components/live-feed";
 import { ThreatMap } from "@/components/threat-map";
 import { StatsPanel } from "@/components/stats-panel";
@@ -5,10 +6,19 @@ import { AlertFeed } from "@/components/alert-feed";
 import { ImageAnalyzer } from "@/components/image-analyzer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Siren, Play, Pause, Download, Share2, LayoutGrid, Eye } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Siren, Play, Pause, Download, Share2, LayoutGrid, Eye, Database } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { REAL_DATASETS, Dataset } from "@/data/datasets";
 
 export default function Dashboard() {
+  const [selectedDataset, setSelectedDataset] = useState<Dataset>(REAL_DATASETS[0]);
+
+  const handleDatasetChange = (value: string) => {
+    const dataset = REAL_DATASETS.find(d => d.id === value);
+    if (dataset) setSelectedDataset(dataset);
+  };
+
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1600px] mx-auto pb-20">
       {/* Header Actions */}
@@ -24,6 +34,22 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-4 border-r border-border pr-4">
+            <Database className="w-4 h-4 text-muted-foreground" />
+            <Select value={selectedDataset.id} onValueChange={handleDatasetChange}>
+              <SelectTrigger className="w-[240px] bg-card border-border font-mono text-xs h-8">
+                <SelectValue placeholder="Select Data Source" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                {REAL_DATASETS.map((ds) => (
+                  <SelectItem key={ds.id} value={ds.id} className="font-mono text-xs">
+                    {ds.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Button variant="outline" size="sm" className="font-mono text-xs gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive">
             <Siren className="w-4 h-4" />
             INITIATE LOCKDOWN
@@ -71,7 +97,10 @@ export default function Dashboard() {
                   GEOSPATIAL TRACKING
                 </Badge>
               </div>
-              <ThreatMap />
+              <ThreatMap 
+                center={selectedDataset.location} 
+                threats={selectedDataset.threats}
+              />
             </div>
           </div>
         </TabsContent>
@@ -87,7 +116,10 @@ export default function Dashboard() {
                    LOCATION CONTEXT
                  </Badge>
                </div>
-               <ThreatMap />
+               <ThreatMap 
+                center={selectedDataset.location} 
+                threats={selectedDataset.threats}
+               />
              </div>
           </div>
         </TabsContent>
@@ -97,7 +129,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 h-auto lg:h-[350px]">
         {/* Stats */}
         <div className="lg:col-span-8 h-full">
-          <StatsPanel />
+          <StatsPanel 
+            crowdData={selectedDataset.stats.crowdDensity} 
+            threatData={selectedDataset.stats.classification}
+          />
         </div>
 
         {/* Alerts */}

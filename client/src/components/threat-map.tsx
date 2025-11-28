@@ -6,6 +6,7 @@ import { Search, Crosshair, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { ThreatData } from "@/data/datasets";
 
 // Fix Leaflet icon issue
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -44,10 +45,21 @@ function LocationMarker({ setPosition }: { setPosition: (pos: [number, number]) 
   return null;
 }
 
-export function ThreatMap() {
-  const [position, setPosition] = useState<[number, number]>([40.7128, -74.0060]); // NYC Default
+interface ThreatMapProps {
+  threats?: ThreatData[];
+  center?: [number, number];
+}
+
+export function ThreatMap({ threats = [], center }: ThreatMapProps) {
+  const [position, setPosition] = useState<[number, number]>([40.7128, -74.0060]); // Default
   const [searchQuery, setSearchQuery] = useState("");
   const [capturedLocation, setCapturedLocation] = useState<[number, number] | null>(null);
+
+  useEffect(() => {
+    if (center) {
+      setPosition(center);
+    }
+  }, [center]);
 
   const handleLocateMe = () => {
     if (navigator.geolocation) {
@@ -73,26 +85,27 @@ export function ThreatMap() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock search for prototype - in real app, use OpenStreetMap Nominatim API
+    // Mock search for prototype
     if (searchQuery.toLowerCase().includes("times square")) {
       setPosition([40.7580, -73.9855]);
     } else if (searchQuery.toLowerCase().includes("central park")) {
       setPosition([40.7829, -73.9654]);
+    } else if (searchQuery.toLowerCase().includes("kyiv")) {
+      setPosition([50.4501, 30.5234]);
+    } else if (searchQuery.toLowerCase().includes("heathrow")) {
+      setPosition([51.4700, -0.4543]);
     } else {
       toast({
         title: "Simulated Search",
-        description: "Try 'Times Square' or 'Central Park' for demo.",
+        description: "Try 'Kyiv', 'Heathrow', or 'Times Square' for demo.",
       });
     }
   };
 
-  const threats = [
-    { pos: [position[0] + 0.002, position[1]] as [number, number], radius: 200, type: "threat" },
-    { pos: [position[0] - 0.001, position[1] - 0.003] as [number, number], radius: 150, type: "threat" },
-  ];
-
-  const safeZones = [
-    { pos: [position[0] - 0.0028, position[1] + 0.004] as [number, number], radius: 300, type: "safe" }
+  // If no threats provided, use some mock ones relative to center for backward compatibility
+  const displayThreats = threats.length > 0 ? threats : [
+    { lat: position[0] + 0.002, lng: position[1], type: "threat" as const, confidence: 0.9, id: "mock-1", altitude: 100, velocity: 0, timestamp: "", source: "MOCK" },
+    { lat: position[0] - 0.001, lng: position[1] - 0.003, type: "threat" as const, confidence: 0.8, id: "mock-2", altitude: 100, velocity: 0, timestamp: "", source: "MOCK" },
   ];
 
   return (
@@ -145,11 +158,11 @@ export function ThreatMap() {
           </Marker>
         )}
 
-        {/* Dynamic Threat Zones relative to center */}
-        {threats.map((t, i) => (
+        {/* Dynamic Threat Zones */}
+        {displayThreats.map((t, i) => (
           <Circle 
-            key={`threat-${i}`}
-            center={t.pos} 
+            key={`threat-zone-${t.id || i}`}
+            center={[t.lat, t.lng]} 
             pathOptions={{ 
               color: 'var(--color-destructive)', 
               fillColor: 'var(--color-destructive)', 
@@ -157,31 +170,19 @@ export function ThreatMap() {
               weight: 1,
               dashArray: '5, 10'
             }} 
-            radius={t.radius} 
-          />
-        ))}
-
-        {/* Safe Zones */}
-        {safeZones.map((z, i) => (
-          <Circle 
-            key={`safe-${i}`}
-            center={z.pos} 
-            pathOptions={{ 
-              color: 'var(--color-status-ok)', 
-              fillColor: 'var(--color-status-ok)', 
-              fillOpacity: 0.2,
-              weight: 2
-            }} 
-            radius={z.radius} 
+            radius={200} // Fixed radius for now
           />
         ))}
         
-        {/* Animated Pulse for Threats */}
-        {threats.map((t, i) => (
-           <Marker key={`m-${i}`} position={t.pos}>
+        {/* Threat Markers */}
+        {displayThreats.map((t, i) => (
+           <Marker key={`threat-marker-${t.id || i}`} position={[t.lat, t.lng]}>
              <Popup className="font-mono text-xs">
-               THREAT DETECTED<br/>
-               CONFIDENCE: 98%
+               <div className="font-bold text-destructive">{t.type.toUpperCase()} DETECTED</div>
+               <div>CONF: {(t.confidence * 100).toFixed(0)}%</div>
+               <div>ALT: {t.altitude}m</div>
+               <div>VEL: {t.velocity}km/h</div>
+               <div className="text-muted-foreground text-[10px] mt-1">SRC: {t.source}</div>
              </Popup>
            </Marker>
         ))}
