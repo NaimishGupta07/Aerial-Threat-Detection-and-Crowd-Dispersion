@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LiveFeed } from "@/components/live-feed";
 import { ThreatMap } from "@/components/threat-map";
 import { StatsPanel } from "@/components/stats-panel";
@@ -9,15 +9,68 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Siren, Play, Pause, Download, Share2, LayoutGrid, Eye, Database } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { REAL_DATASETS, Dataset } from "@/data/datasets";
+import { Dataset } from "@/data/datasets";
+
+interface BackendDataset {
+  id: string;
+  name: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  threats: any[];
+  crowdStats: any[];
+  classificationStats: any[];
+}
 
 export default function Dashboard() {
-  const [selectedDataset, setSelectedDataset] = useState<Dataset>(REAL_DATASETS[0]);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch datasets from backend
+    fetch('/api/datasets')
+      .then(res => res.json())
+      .then((backendDatasets: BackendDataset[]) => {
+        // Transform backend data to frontend format
+        const transformed = backendDatasets.map(ds => ({
+          id: ds.id,
+          name: ds.name,
+          description: ds.description,
+          location: [ds.latitude, ds.longitude] as [number, number],
+          threats: ds.threats as any,
+          stats: {
+            crowdDensity: ds.crowdStats as any,
+            classification: ds.classificationStats as any,
+          }
+        }));
+        setDatasets(transformed);
+        if (transformed.length > 0) {
+          setSelectedDataset(transformed[0]);
+        }
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to fetch datasets:', err);
+        setIsLoading(false);
+      });
+  }, []);
 
   const handleDatasetChange = (value: string) => {
-    const dataset = REAL_DATASETS.find(d => d.id === value);
+    const dataset = datasets.find(d => d.id === value);
     if (dataset) setSelectedDataset(dataset);
   };
+
+  if (isLoading || !selectedDataset) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="font-mono text-sm text-muted-foreground">LOADING THREAT DATA...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-w-[1600px] mx-auto pb-20">
@@ -41,7 +94,7 @@ export default function Dashboard() {
                 <SelectValue placeholder="Select Data Source" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
-                {REAL_DATASETS.map((ds) => (
+                {datasets.map((ds) => (
                   <SelectItem key={ds.id} value={ds.id} className="font-mono text-xs">
                     {ds.name}
                   </SelectItem>

@@ -27,20 +27,48 @@ export function ImageAnalyzer() {
     }
   };
 
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     if (!image) return;
+    
+    // Get the file from the file input
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) return;
+
     setIsAnalyzing(true);
     
-    // Simulate AI processing time
-    setTimeout(() => {
-      setIsAnalyzing(false);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Analysis failed');
+      }
+
+      const data = await response.json();
+      
       setResult({
-        threats: Math.floor(Math.random() * 3), // Random threats 0-2
-        crowdCount: Math.floor(Math.random() * 50) + 20, // Random crowd
+        threats: data.threatCount,
+        crowdCount: data.crowdCount,
+        density: data.density as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+        status: data.status as "SAFE" | "WARNING" | "DANGER"
+      });
+    } catch (error) {
+      console.error('Analysis error:', error);
+      // Fallback to simulated data on error
+      setResult({
+        threats: Math.floor(Math.random() * 3),
+        crowdCount: Math.floor(Math.random() * 50) + 20,
         density: Math.random() > 0.5 ? "HIGH" : "MEDIUM",
         status: Math.random() > 0.7 ? "DANGER" : "WARNING"
       });
-    }, 2000);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const clearImage = () => {

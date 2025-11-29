@@ -83,21 +83,39 @@ export function ThreatMap({ threats = [], center }: ThreatMapProps) {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock search for prototype
-    if (searchQuery.toLowerCase().includes("times square")) {
-      setPosition([40.7580, -73.9855]);
-    } else if (searchQuery.toLowerCase().includes("central park")) {
-      setPosition([40.7829, -73.9654]);
-    } else if (searchQuery.toLowerCase().includes("kyiv")) {
-      setPosition([50.4501, 30.5234]);
-    } else if (searchQuery.toLowerCase().includes("heathrow")) {
-      setPosition([51.4700, -0.4543]);
-    } else {
+    if (!searchQuery.trim()) return;
+
+    try {
+      const response = await fetch('/api/geocode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: searchQuery }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        toast({
+          title: "Location Not Found",
+          description: error.suggestion || "Try 'Kyiv', 'Heathrow', or 'Times Square'",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const data = await response.json();
+      setPosition([data.lat, data.lng]);
       toast({
-        title: "Simulated Search",
-        description: "Try 'Kyiv', 'Heathrow', or 'Times Square' for demo.",
+        title: "Location Found",
+        description: `Navigating to ${data.display}`,
+        className: "bg-card border-primary text-foreground",
+      });
+    } catch (error) {
+      toast({
+        title: "Search Error",
+        description: "Unable to process location search.",
+        variant: "destructive",
       });
     }
   };
