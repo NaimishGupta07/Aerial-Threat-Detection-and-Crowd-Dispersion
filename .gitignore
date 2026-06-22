@@ -1,6 +1,26 @@
-node_modules
-dist
-.DS_Store
-server/public
-vite.config.ts.*
-*.tar.gz
+# AI datasets
+ai-engine/dataset/
+ai-engine/datasets/
+datasets/
+dataset/
+
+# trained models
+*.pt
+models/
+
+# uploads
+uploads/
+runs/
+
+# python
+venv/
+__pycache__/
+
+# node
+node_modules/
+dist/
+
+# Replit
+.local/
+.replit
+replit.md

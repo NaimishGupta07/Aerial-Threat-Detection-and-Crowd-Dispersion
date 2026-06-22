@@ -26,6 +26,8 @@ export default function Dashboard() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDataset, setSelectedDataset] = useState<Dataset | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [threatLevel, setThreatLevel] = useState<"LOW" | "ELEVATED" | "CRITICAL">("LOW");
+  const [autoLockdown, setAutoLockdown] = useState(false);
 
   useEffect(() => {
     // Fetch datasets from backend
@@ -61,6 +63,32 @@ export default function Dashboard() {
     if (dataset) setSelectedDataset(dataset);
   };
 
+  // Derive threat level from current dataset
+  useEffect(() => {
+    if (!selectedDataset) return;
+    const threatCount = selectedDataset.threats?.length ?? 0;
+    const maxConfidence = selectedDataset.threats?.reduce((max, t: any) => Math.max(max, t.confidence ?? 0), 0) ?? 0;
+    const crowdPeak = selectedDataset.stats?.crowdDensity?.reduce((max: number, c: any) => Math.max(max, c.density ?? 0), 0) ?? 0;
+
+    let level: "LOW" | "ELEVATED" | "CRITICAL" = "LOW";
+    if (threatCount >= 3 || maxConfidence >= 0.8 || crowdPeak >= 70) {
+      level = "ELEVATED";
+    }
+    if (threatCount >= 5 || maxConfidence >= 0.9 || crowdPeak >= 85) {
+      level = "CRITICAL";
+    }
+    setThreatLevel(level);
+  }, [selectedDataset]);
+
+  // Auto-trigger lockdown on critical or extreme crowd congestion
+  useEffect(() => {
+    if (threatLevel === "CRITICAL") {
+      setAutoLockdown(true);
+    } else {
+      setAutoLockdown(false);
+    }
+  }, [threatLevel]);
+
   if (isLoading || !selectedDataset) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -81,8 +109,12 @@ export default function Dashboard() {
             SECTOR 7 MONITORING
           </h2>
           <p className="text-sm text-muted-foreground font-mono flex items-center gap-2">
-            <span className="w-2 h-2 bg-status-ok rounded-full" />
-            OPERATIONAL STATUS: NORMAL
+            <span
+              className={`w-2 h-2 rounded-full ${
+                threatLevel === "CRITICAL" ? "bg-destructive" : threatLevel === "ELEVATED" ? "bg-status-warning" : "bg-status-ok"
+              }`}
+            />
+            OPERATIONAL STATUS: {threatLevel}
           </p>
         </div>
 
@@ -103,9 +135,14 @@ export default function Dashboard() {
             </Select>
           </div>
 
-          <Button variant="outline" size="sm" className="font-mono text-xs gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive">
+          <Button
+            variant={autoLockdown ? "default" : "outline"}
+            size="sm"
+            className={`font-mono text-xs gap-2 ${autoLockdown ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : "border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"}`}
+            disabled={autoLockdown}
+          >
             <Siren className="w-4 h-4" />
-            INITIATE LOCKDOWN
+            {autoLockdown ? "LOCKDOWN AUTO-TRIGGERED" : "INITIATE LOCKDOWN"}
           </Button>
           <Button variant="outline" size="sm" className="font-mono text-xs gap-2">
             <Download className="w-4 h-4" />

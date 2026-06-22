@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, Scan, AlertCircle, Users, ShieldAlert, X, Loader2 } from "lucide-react";
+import { Upload, Scan, AlertCircle, Users, ShieldAlert, X, Loader2, Radar, Crosshair, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,12 +10,18 @@ interface AnalysisResult {
   crowdCount: number;
   density: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   status: "SAFE" | "WARNING" | "DANGER";
+  predictions: Array<{
+    label: string;
+    confidence: number;
+    box: { x: number; y: number; w: number; h: number };
+  }>;
 }
 
 export function ImageAnalyzer() {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,48 +30,83 @@ export function ImageAnalyzer() {
       const url = URL.createObjectURL(file);
       setImage(url);
       setResult(null);
+      setError(null);
     }
   };
 
   const analyzeImage = async () => {
-    if (!image) return;
+    if (!image) {
+      setResult({
+        threats: 0,
+        crowdCount: 0,
+        density: "LOW",
+        status: "SAFE",
+        predictions: [],
+      });
+      setError("No image selected. Please upload an image to classify.");
+      return;
+    }
     
     // Get the file from the file input
     const file = fileInputRef.current?.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setResult({
+        threats: 0,
+        crowdCount: 0,
+        density: "LOW",
+        status: "SAFE",
+        predictions: [],
+      });
+      setError("No image file found. Please re-upload and try again.");
+      return;
+    }
 
     setIsAnalyzing(true);
+    setError(null);
     
     try {
-      const formData = new FormData();
-      formData.append('image', file);
+  const formData = new FormData();
+  formData.append("file", file);
 
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        body: formData,
-      });
+  const response = await fetch(
+    "http://127.0.0.1:8000/analyze-drone",
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
 
-      if (!response.ok) {
-        throw new Error('Analysis failed');
-      }
+  if (!response.ok) {
+    throw new Error("Analysis failed");
+  }
 
-      const data = await response.json();
-      
-      setResult({
-        threats: data.threatCount,
-        crowdCount: data.crowdCount,
-        density: data.density as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-        status: data.status as "SAFE" | "WARNING" | "DANGER"
-      });
-    } catch (error) {
+  const data = await response.json();
+
+  const predictions = (data.detections || []).map(
+    (d: any, idx: number) => ({
+      label: d.class.toUpperCase(),
+      confidence: d.confidence,
+
+      box: {
+        x: 20 + idx * 5,
+        y: 20 + idx * 5,
+        w: 25,
+        h: 25,
+      },
+    })
+  );
+
+  setResult({
+    threats: data.count || 0,
+    crowdCount: 0,
+    density: "LOW",
+    status: data.count > 0 ? "DANGER" : "SAFE",
+    predictions,
+  });
+} catch (error) {
       console.error('Analysis error:', error);
-      // Fallback to simulated data on error
-      setResult({
-        threats: Math.floor(Math.random() * 3),
-        crowdCount: Math.floor(Math.random() * 50) + 20,
-        density: Math.random() > 0.5 ? "HIGH" : "MEDIUM",
-        status: Math.random() > 0.7 ? "DANGER" : "WARNING"
-      });
+      setError("Analysis failed. Please retry with a clearer image.");
+      setResult(null);
     } finally {
       setIsAnalyzing(false);
     }
@@ -96,9 +137,14 @@ export function ImageAnalyzer() {
             ANALYSIS COMPLETE
           </Badge>
         )}
+        {error && (
+          <Badge variant="destructive" className="font-mono text-xs px-3 py-1">
+            {error}
+          </Badge>
+        )}
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden rounded-lg bg-black border border-border relative group">
+      <div className="flex-1 flex flex-col min-h-0 overflow-visible rounded-lg bg-black border border-border relative group">
         {!image ? (
           <div 
             onClick={() => fileInputRef.current?.click()}
@@ -136,18 +182,44 @@ export function ImageAnalyzer() {
 
             {/* Results Overlay */}
             {!isAnalyzing && result && (
-              <div className="absolute inset-0 p-4 pointer-events-none">
-                {/* Simulated Bounding Boxes (Static for mock) */}
-                <div className="absolute top-[20%] left-[30%] w-[15%] h-[20%] border-2 border-destructive shadow-[0_0_10px_var(--color-destructive)] opacity-80">
-                  <div className="absolute -top-6 left-0 bg-destructive text-black font-mono text-[10px] px-1 font-bold">
-                    THREAT 98%
+              <div className="absolute inset-0 p-4 pointer-events-none z-20">
+                {/* Dynamic bounding boxes from ML predictions */}
+                {result.predictions.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-black/70 text-muted-foreground font-mono text-xs px-3 py-2 rounded border border-border">
+                      NO DETECTIONS IN FRAME
+                    </div>
                   </div>
-                </div>
-                <div className="absolute top-[40%] right-[20%] w-[25%] h-[30%] border-2 border-status-warning shadow-[0_0_10px_var(--color-status-warning)] opacity-60">
-                  <div className="absolute -top-6 left-0 bg-status-warning text-black font-mono text-[10px] px-1 font-bold">
-                    CROWD DENSITY
-                  </div>
-                </div>
+                )}
+                {result.predictions.map((p, idx) => {
+                  const isThreat = p.label === "UAV" || p.label === "DRONE";
+                  const color = isThreat ? "var(--color-destructive)" : p.label === "CROWD" ? "var(--color-status-warning)" : "var(--color-primary)";
+                  return (
+                    <motion.div
+                      key={`${p.label}-${idx}`}
+                      className="absolute border-2"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 0.85, scale: 1 }}
+                      transition={{ duration: 0.25, delay: idx * 0.05 }}
+                      style={{
+                        left: `${p.box.x}%`,
+                        top: `${p.box.y}%`,
+                        width: `${p.box.w}%`,
+                        height: `${p.box.h}%`,
+                        borderColor: color,
+                        boxShadow: `0 0 10px ${color}`,
+                      }}
+                    >
+                      <div
+                        className="absolute -top-6 left-0 text-[10px] font-mono px-1.5 py-0.5 text-black font-bold flex items-center gap-1 whitespace-nowrap"
+                        style={{ backgroundColor: color }}
+                      >
+                        {isThreat ? <Target className="w-3 h-3" /> : <Radar className="w-3 h-3" />}
+                        {p.label} {(p.confidence * 100).toFixed(0)}%
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
 
@@ -176,7 +248,7 @@ export function ImageAnalyzer() {
         )}
         
         {result && (
-          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-4 gap-2">
              <Card className="bg-card/50 border-border p-3 flex flex-col items-center justify-center text-center">
                <ShieldAlert className="w-5 h-5 text-destructive mb-1" />
                <span className="text-[10px] font-mono text-muted-foreground">THREATS</span>
@@ -192,6 +264,13 @@ export function ImageAnalyzer() {
                <span className="text-[10px] font-mono text-muted-foreground">STATUS</span>
                <span className={`text-lg font-display font-bold ${result.status === 'DANGER' ? 'text-destructive' : 'text-status-warning'}`}>
                  {result.status}
+               </span>
+             </Card>
+             <Card className="bg-card/50 border-border p-3 flex flex-col items-center justify-center text-center">
+               <Radar className="w-5 h-5 text-primary mb-1" />
+               <span className="text-[10px] font-mono text-muted-foreground">CLASSES</span>
+               <span className="text-sm font-display font-bold text-foreground">
+                 {result.predictions.length === 0 ? "NONE" : Array.from(new Set(result.predictions.map(p => p.label))).join(" · ")}
                </span>
              </Card>
           </div>
